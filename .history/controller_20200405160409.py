@@ -214,7 +214,7 @@ class ShardHandler(object):
         2.txt (shard 2, primary)
         etc...
         """
-        if self.get_replication_level == 0:
+        if self.get_replication_level < 1:
             raise Exception('There is nothing to remove')
 
         data = './data'
@@ -243,9 +243,7 @@ class ShardHandler(object):
         """Verify that all replications are equal to their primaries and that
         any missing primaries are appropriately recreated from their
         replications."""
-        # if self.get_replication_level == 0:
-            
-        pass
+        
 
     def get_shard_data(self, shardnum=None) -> [str, Dict]:
         """Return information about a shard from the mapfile."""
@@ -263,18 +261,10 @@ class ShardHandler(object):
 
 s = ShardHandler()
 
-s.build_shards(5, load_data_from_file())
+s.build_shards(1, load_data_from_file())
 
-# print(s.mapping.keys())
+print(s.mapping.keys())
 
 s.add_shard()
 
-s.remove_shard()
-
-
-s.add_replication()
-s.add_replication()
-
-
-s.remove_replication()
-s.add_shard()
+print(s.mapping.keys())

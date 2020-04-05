@@ -186,7 +186,7 @@ class ShardHandler(object):
             [filename for filename in files if '-' not in filename])
 
         for i, file in enumerate(shard_keys):
-            # print("i file", i, file)
+            print("i file", i, file)
             source = f'./data/{file}'
             dest_folder = f'./data/{i}-{self.get_replication_level}.txt'
             copyfile(source, dest_folder)
@@ -194,9 +194,10 @@ class ShardHandler(object):
         
         for i, k in enumerate(keys):
             self.mapping[f'{i}-{self.get_replication_level}'] = self.mapping[k]
-            # print("add repl ", i, k)
+            print("i k ", i, k)
         self.write_map()
         print(self.get_replication_level)
+        
 
     def remove_replication(self) -> None:
         """Remove the highest replication level.
@@ -219,10 +220,10 @@ class ShardHandler(object):
 
         data = './data'
         files = os.listdir(data)
-        primary_files = sorted(
+        shard_keys = sorted(
             [filename for filename in files if '-' not in filename])
 
-        for i, file in enumerate(primary_files):
+        for i, file in enumerate(shard_keys):
             print("i file", i, file)
             twinsies = f'./data/{i}-{self.get_replication_level}.txt'
             os.remove(twinsies)
@@ -234,7 +235,7 @@ class ShardHandler(object):
             endkey = f'{i}-{self.get_replication_level}'
             self.mapping.pop(endkey)
         
-            print("remove repl ", i, k)
+            print("i k ", i, k)
         self.get_replication_level -= 1
         self.write_map()
         print(self.get_replication_level)
@@ -243,9 +244,29 @@ class ShardHandler(object):
         """Verify that all replications are equal to their primaries and that
         any missing primaries are appropriately recreated from their
         replications."""
-        # if self.get_replication_level == 0:
-            
-        pass
+        shards = self.get_shard_ids()
+        reps = self.get_replication_ids()
+        # want to make sure all primaries are there
+        for item in shards:
+            for otheritem in reps:
+                if not os.path.exists(os.path.join(f'./data/{item}.txt')) and os.path.exists(os.path.join(f'./data/{otheritem}.txt')):
+                    return print('You broke it!')
+        for item in shards:
+            if not os.path.exists(os.path.join(f'./data/{item}.txt')):
+                for otheritem in reps:
+                    if otheritem.startswith(item):
+                        if os.path.exists(f'./data/{otheritem}.txt'):
+                            copyfile(f'./data/{otheritem}.txt',
+                                     f'./data/{item}.txt')
+
+        # if not, restore primaires from replications
+        for item in reps:
+            if not os.path.exists(os.path.join(f'./data/{item}.txt')):
+                for otheritem in shards:
+                    if otheritem.startswith(item[:item.index('-')]):
+                        if os.path.exists(f'./data/{otheritem}.txt'):
+                            copyfile(f'./data/{otheritem}.txt',
+                                     f'./data/{item}.txt')
 
     def get_shard_data(self, shardnum=None) -> [str, Dict]:
         """Return information about a shard from the mapfile."""
@@ -265,16 +286,8 @@ s = ShardHandler()
 
 s.build_shards(5, load_data_from_file())
 
-# print(s.mapping.keys())
+print(s.mapping.keys())
 
-s.add_shard()
+# s.add_shard()
 
-s.remove_shard()
-
-
-s.add_replication()
-s.add_replication()
-
-
-s.remove_replication()
-s.add_shard()
+print(s.mapping.keys())

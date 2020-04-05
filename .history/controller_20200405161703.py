@@ -214,7 +214,7 @@ class ShardHandler(object):
         2.txt (shard 2, primary)
         etc...
         """
-        if self.get_replication_level == 0:
+        if self.get_replication_level < 1:
             raise Exception('There is nothing to remove')
 
         data = './data'

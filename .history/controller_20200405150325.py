@@ -21,7 +21,7 @@ class ShardHandler(object):
     def __init__(self):
         self.mapping = self.load_map()
         self.last_char_position = 0
-        self.get_replication_level = 0
+
     mapfile = "mapping.json"
 
 
@@ -179,24 +179,23 @@ class ShardHandler(object):
         to detect how many levels there are and appropriately add the next
         level.
         """
-        self.get_replication_level += 1
-        data = './data'
-        files = os.listdir(data)
-        shard_keys = sorted(
-            [filename for filename in files if '-' not in filename])
+        self.mapping = self.load_map()
+        data = self.load_data_from_shards()
+        keys = [int(z) for z in self.get_replication_ids()]
+        replication_level = self.get_replication_level()+1
+        keys.sort()
 
-        for i, file in enumerate(shard_keys):
-            # print("i file", i, file)
-            source = f'./data/{file}'
-            dest_folder = f'./data/{i}-{self.get_replication_level}.txt'
-            copyfile(source, dest_folder)
-        keys = self.get_shard_ids()
-        
-        for i, k in enumerate(keys):
-            self.mapping[f'{i}-{self.get_replication_level}'] = self.mapping[k]
-            # print("add repl ", i, k)
+        for k in keys:
+            data = self.mapping.get(k)
+            self._write_shard_mapping(f"{k}-{replication_level}", data, True)
+            copyfile(
+                f"data/{k}.txt",
+                f"data/{k}-{replication_level}.txt"
+            )
+
         self.write_map()
-        print(self.get_replication_level)
+        self.sync_replication()
+        # pass
 
     def remove_replication(self) -> None:
         """Remove the highest replication level.
@@ -214,37 +213,12 @@ class ShardHandler(object):
         2.txt (shard 2, primary)
         etc...
         """
-        if self.get_replication_level == 0:
-            raise Exception('There is nothing to remove')
-
-        data = './data'
-        files = os.listdir(data)
-        primary_files = sorted(
-            [filename for filename in files if '-' not in filename])
-
-        for i, file in enumerate(primary_files):
-            print("i file", i, file)
-            twinsies = f'./data/{i}-{self.get_replication_level}.txt'
-            os.remove(twinsies)
-            
-        keys = self.get_shard_ids()
-        
-        for i, k in enumerate(keys):
-
-            endkey = f'{i}-{self.get_replication_level}'
-            self.mapping.pop(endkey)
-        
-            print("remove repl ", i, k)
-        self.get_replication_level -= 1
-        self.write_map()
-        print(self.get_replication_level)
+       
 
     def sync_replication(self) -> None:
         """Verify that all replications are equal to their primaries and that
         any missing primaries are appropriately recreated from their
         replications."""
-        # if self.get_replication_level == 0:
-            
         pass
 
     def get_shard_data(self, shardnum=None) -> [str, Dict]:
@@ -265,16 +239,8 @@ s = ShardHandler()
 
 s.build_shards(5, load_data_from_file())
 
-# print(s.mapping.keys())
+print(s.mapping.keys())
 
-s.add_shard()
+# s.add_shard()
 
-s.remove_shard()
-
-
-s.add_replication()
-s.add_replication()
-
-
-s.remove_replication()
-s.add_shard()
+print(s.mapping.keys())

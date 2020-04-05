@@ -21,9 +21,9 @@ class ShardHandler(object):
     def __init__(self):
         self.mapping = self.load_map()
         self.last_char_position = 0
-        self.get_replication_level = 0
-    mapfile = "mapping.json"
+        self.replication_level = 0
 
+    mapfile = "mapping.json"
 
     def write_map(self) -> None:
         """Write the current 'database' mapping to file."""
@@ -109,8 +109,9 @@ class ShardHandler(object):
         """Split the data into as many pieces as needed."""
         splicenum, rem = divmod(len(data), count)
 
-        result = [data[splicenum * z:splicenum *
-                       (z + 1)] for z in range(count)]
+        result = [data[splicenum * z:splicenum * (z + 1)]
+                  for z in range(count)]
+        
         # take care of any odd characters
         if rem > 0:
             result[-1] += data[-rem:]
@@ -148,6 +149,7 @@ class ShardHandler(object):
         """Loads the data from all shards, removes the extra 'database' file,
         and writes the new number of shards to disk.
         """
+        
         self.mapping = self.load_map()
         data = self.load_data_from_shards()
         keys = [int(z) for z in self.get_shard_ids()]
@@ -166,85 +168,83 @@ class ShardHandler(object):
 
         self.sync_replication()
 
+
     def add_replication(self) -> None:
         """Add a level of replication so that each shard has a backup. Label
         them with the following format:
+
         1.txt (shard 1, primary)
         1-1.txt (shard 1, replication 1)
         1-2.txt (shard 1, replication 2)
         2.txt (shard 2, primary)
         2-1.txt (shard 2, replication 1)
         ...etc.
+
         By default, there is no replication -- add_replication should be able
         to detect how many levels there are and appropriately add the next
         level.
         """
-        self.get_replication_level += 1
-        data = './data'
-        files = os.listdir(data)
-        shard_keys = sorted(
+        self.replication_level += 1
+        fold = './data'
+        files = os.listdir(fold)
+        prime_shards = sorted(
             [filename for filename in files if '-' not in filename])
 
-        for i, file in enumerate(shard_keys):
-            # print("i file", i, file)
+        for i, file in enumerate(prime_shards):
             source = f'./data/{file}'
-            dest_folder = f'./data/{i}-{self.get_replication_level}.txt'
-            copyfile(source, dest_folder)
+            destination = f'./data/{i}-{self.replication_level}.txt'
+            copyfile(source, destination)
         keys = self.get_shard_ids()
-        
-        for i, k in enumerate(keys):
-            self.mapping[f'{i}-{self.get_replication_level}'] = self.mapping[k]
-            # print("add repl ", i, k)
+        for i, key in enumerate(keys):
+            self.mapping[f'{i}-{self.replication_level}'] = self.mapping[key]
+
         self.write_map()
-        print(self.get_replication_level)
+        print(self.replication_level)
 
     def remove_replication(self) -> None:
         """Remove the highest replication level.
+
         If there are only primary files left, remove_replication should raise
         an exception stating that there is nothing left to remove.
+
         For example:
+
         1.txt (shard 1, primary)
         1-1.txt (shard 1, replication 1)
         1-2.txt (shard 1, replication 2)
         2.txt (shard 2, primary)
         etc...
+
         to:
+
         1.txt (shard 1, primary)
         1-1.txt (shard 1, replication 1)
         2.txt (shard 2, primary)
         etc...
         """
-        if self.get_replication_level == 0:
-            raise Exception('There is nothing to remove')
+        self.mapping = self.load_map()
+        keys = [int(z) for z in self.get_shard_ids()]
+        replication_level = self.get_replication_level()
+        keys.sort()
 
-        data = './data'
-        files = os.listdir(data)
-        primary_files = sorted(
-            [filename for filename in files if '-' not in filename])
+        for key in keys:
+            replication_file = f"{key}-{replication_level}"
+            if replication_file in self.mapping:
+                del self.mapping[replication_file]
+            if os.path.exists(f"data/{replication_file}.txt"):
+                os.remove(f"data/{replication_file}.txt")
 
-        for i, file in enumerate(primary_files):
-            print("i file", i, file)
-            twinsies = f'./data/{i}-{self.get_replication_level}.txt'
-            os.remove(twinsies)
-            
-        keys = self.get_shard_ids()
-        
-        for i, k in enumerate(keys):
-
-            endkey = f'{i}-{self.get_replication_level}'
-            self.mapping.pop(endkey)
-        
-            print("remove repl ", i, k)
-        self.get_replication_level -= 1
         self.write_map()
-        print(self.get_replication_level)
+        self.sync_replication()
 
     def sync_replication(self) -> None:
         """Verify that all replications are equal to their primaries and that
         any missing primaries are appropriately recreated from their
         replications."""
-        # if self.get_replication_level == 0:
-            
+        # if not self.check_primary_files():
+        #     self.repair_primary_files()
+
+        # self.update_replications()
         pass
 
     def get_shard_data(self, shardnum=None) -> [str, Dict]:
@@ -263,18 +263,10 @@ class ShardHandler(object):
 
 s = ShardHandler()
 
-s.build_shards(5, load_data_from_file())
+s.build_shards(1, load_data_from_file())
 
-# print(s.mapping.keys())
+print(s.mapping.keys())
 
 s.add_shard()
 
-s.remove_shard()
-
-
-s.add_replication()
-s.add_replication()
-
-
-s.remove_replication()
-s.add_shard()
+print(s.mapping.keys())

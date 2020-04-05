@@ -214,7 +214,7 @@ class ShardHandler(object):
         2.txt (shard 2, primary)
         etc...
         """
-        if self.get_replication_level == 0:
+        if self.get_replication_level < 1:
             raise Exception('There is nothing to remove')
 
         data = './data'
@@ -265,7 +265,7 @@ s = ShardHandler()
 
 s.build_shards(5, load_data_from_file())
 
-# print(s.mapping.keys())
+print(s.mapping.keys())
 
 s.add_shard()
 
