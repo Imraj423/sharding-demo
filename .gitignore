@@ -4,5 +4,6 @@
 __pycache__/*
 .history/*
 data/*
+v/*
 mapping.json
 controller_answer.py
