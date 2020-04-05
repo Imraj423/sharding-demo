@@ -2,8 +2,7 @@
 .venv/*
 .vscode/*
 __pycache__/*
-
+.history/*
 data/*
 mapping.json
 controller_answer.py
-.history
